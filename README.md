@@ -15,6 +15,3 @@ python3 scripts/run_experiment.py
 
 # 4. Analyze (produces plots + stat tests) - Pending
 python3 analysis/analyze.py
-
-# 5. Generate blog tables - Pending
-python3 analysis/generate_tables.py
