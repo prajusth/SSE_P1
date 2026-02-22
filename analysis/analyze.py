@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 analyze.py — Statistical analysis and plots.
 
@@ -282,7 +281,6 @@ def _print_summary(df):
 # =============================================================================
 
 # --- 4a: violin plots — one figure per (level, file_type) -------------------
-# this gives each subplot enough room to be readable
 
 def plot_violins(df, metric, ylabel):
     print("  violin plots...")
@@ -471,12 +469,10 @@ def plot_edp(df):
                     ax.set_visible(False)
                     continue
 
-                # aggregate to median per provider for a clean bar chart
                 agg = ssub.groupby("provider")["edp"].median().reindex(order)
                 bars = ax.bar(agg.index, agg.values,
                     color=[COLORS.get(p, "gray") for p in agg.index], edgecolor="white", width=0.6)
 
-                # value labels on bars
                 for bar, val in zip(bars, agg.values):
                     ax.text(bar.get_x() + bar.get_width()/2, bar.get_height(),
                         f"{val:.1f}", ha="center", va="bottom", fontsize=7.5)
@@ -610,33 +606,50 @@ def plot_efficiency(df):
         save_plot(fig, f"efficiency_{level}.png")
 
 
-# --- 4h: compression ratio comparison (grouped bar) -------------------------
+# --- 4h: compression ratio — 4x3 grid per level -----------------------------
 
 def plot_compression_ratios(df):
     print("  compression ratios...")
     order = _prov_order(df)
+    sizes = _size_order(df)
 
     for level in LEVEL_ORDER:
         sub = df[df["level"] == level]
         if sub.empty:
             continue
 
-        agg = sub.groupby(["provider", "file_type"])["compression_ratio"].median().reset_index()
+        file_types = sorted(sub["file_type"].unique())
+        nrows, ncols = len(file_types), len(sizes)
+        fig, axes = plt.subplots(nrows, ncols,
+            figsize=(4 * ncols, 3.5 * nrows), squeeze=False, sharey=False)
 
-        fig, ax = plt.subplots(figsize=(10, 5))
-        ft_order = sorted(agg["file_type"].unique())
-        sns.barplot(data=agg, x="file_type", y="compression_ratio",
-            hue="provider", hue_order=order, palette=COLORS,
-            order=ft_order, ax=ax)
+        for i, ft in enumerate(file_types):
+            for j, sz in enumerate(sizes):
+                ax = axes[i][j]
+                ssub = sub[(sub["file_type"] == ft) & (sub["file_size"] == sz)]
+                if ssub.empty:
+                    ax.set_visible(False)
+                    continue
 
-        ax.set_xlabel("file type")
-        ax.set_ylabel("compression ratio (lower = better)")
-        ax.set_title(f"compression ratio by file type — level={level}")
-        ax.axhline(y=1.0, color="gray", linestyle="--", alpha=0.5, label="no compression")
-        ax.legend(title="provider")
-        ax.set_ylim(0, 1.05)
-        sns.despine(ax=ax)
-        plt.tight_layout()
+                agg = ssub.groupby("provider")["compression_ratio"].median().reindex(order)
+                bars = ax.bar(agg.index, agg.values,
+                    color=[COLORS.get(p, "gray") for p in agg.index], edgecolor="white", width=0.6)
+
+                for bar, val in zip(bars, agg.values):
+                    ax.text(bar.get_x() + bar.get_width()/2, bar.get_height(),
+                        f"{val:.2f}", ha="center", va="bottom", fontsize=7.5)
+
+                ax.axhline(y=1.0, color="gray", linestyle="--", alpha=0.4)
+                ax.set_ylim(0, 1.1)
+                ax.set_title(f"{ft} / {sz}", fontsize=10, fontweight="bold")
+                ax.set_ylabel("ratio (lower = better)" if j == 0 else "")
+                ax.set_xlabel("")
+                ax.tick_params(axis="x", labelsize=9)
+                sns.despine(ax=ax)
+
+        fig.suptitle(f"compression ratio — level={level} (lower = better)",
+            fontsize=13, fontweight="bold")
+        plt.tight_layout(rect=[0, 0, 1, 0.95])
         save_plot(fig, f"compression_ratio_{level}.png")
 
 
