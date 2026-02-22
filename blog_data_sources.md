@@ -1,6 +1,6 @@
 # Blog Post Data Sources & Derivations
 
-This document explains how each statistic in `blog.md` was derived from the experiment data.
+This document explains how each statistic in `blog.md` was derived from the experiment data. Not necessary for the project, but for clarity included. NOT TO BE SUBMITTED
 
 ## Source Files
 
@@ -190,32 +190,3 @@ Annual savings: 1,420 × 365 = 518,300 kJ = 518.3 MJ ≈ 520 MJ
 
 Convert to kWh: 518.3 MJ / 3.6 MJ/kWh = 144 kWh
 ```
-
----
-
-## Verification Commands
-
-To reproduce these calculations from raw data:
-
-```bash
-# Mean energy and time by provider/level
-awk -F',' 'NR>1 && $7=="False" {
-    key = $2 "/" $3
-    energy[key] += $12; time[key] += $11; count[key]++
-}
-END {
-    for (k in energy) print k, "energy=" energy[k]/count[k], "time=" time[k]/count[k]
-}' data/experiment_20260221_032827.csv
-
-# Effect sizes by comparison
-awk -F',' 'NR>1 && $10=="cohen_d" {
-    sum[$12] += $9; count[$12]++
-}
-END {
-    for (c in sum) print c, sum[c]/count[c]
-}' results/provider_tests.csv
-```
-
----
-
-*Generated: 2026-02-22*
