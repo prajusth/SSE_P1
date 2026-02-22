@@ -237,17 +237,14 @@ PDFs showed the highest energy consumption relative to compression benefit acros
 **For System Administrators:**
 - Consider energy consumption when selecting compression tools for backup systems and log rotation
 - Implement file type detection to avoid wasteful compression of already compressed data
-- For battery powered or energy constrained environments, tool selection matters
 
 **For Developers:**
 - Default compression settings may not be optimal for energy efficiency
 - When packaging software or assets, test different tools' energy profiles
-- Consider exposing compression choices to users with energy conscious defaults
 
 **For Cloud Providers:**
 - At scale, small per operation energy differences multiply into significant costs
 - Compression energy should factor into total cost of ownership calculations
-- Providing energy efficient compression as a service feature could differentiate offerings
 
 ### Limitations
 
@@ -259,7 +256,7 @@ Several factors limit the generalizability of our findings:
 
 3. **Synthetic test files**: While designed to represent real world scenarios, generated test files may not perfectly reflect production workloads.
 
-4. **Limited compression levels**: Testing only fast and default leaves out maximum compression settings used in archival scenarios.
+
 
 ### Future Work
 
@@ -268,8 +265,7 @@ Several directions could extend this research:
 - **Cross platform comparison**: Measure the same tools on Windows, macOS, and different Linux distributions
 - **Hardware diversity**: Test on ARM processors (Raspberry Pi, Apple Silicon, cloud ARM instances)
 - **Decompression energy**: Compression is only half the story. Decompression energy matters too
-- **End to end scenarios**: Measure compression + network transfer + decompression for cloud backup use cases
-- **Real workload characterization**: Profile actual production compression workloads to validate synthetic benchmarks
+
 
 ## Conclusion
 
@@ -303,10 +299,3 @@ The experiment is designed to run on Linux systems with EnergiBridge installed. 
 
 1. Green Software Foundation. "Software Carbon Intensity (SCI) Specification." https://greensoftware.foundation/
 2. EnergiBridge documentation and source code
-3. Intel RAPL documentation for energy measurement
-4. Pereira, R., et al. "Energy Efficiency across Programming Languages." SLE 2017.
-5. Pinto, G., Castor, F. "Energy Efficiency: A New Concern for Application Software Developers." CACM 2017.
-
----
-
-*This blog post documents Project 1 of the Sustainable Software Engineering course, focusing on measuring and comparing energy consumption in common software use cases.*
