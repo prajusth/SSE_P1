@@ -13,6 +13,8 @@ Every time a server rotates its logs, a CI pipeline bundles an artifact, or a cl
 
 We pitted three widely-used tools against each other: 7-Zip (LZMA2), gzip (DEFLATE), and Zstandard (zstd), and measured the energy each consumed across a range of realistic workloads. The answer turned out to be more interesting than "tool X wins." It depends almost entirely on *what* you're compressing, and the reasons why reveal something fundamental about how these algorithms work.
 
+All scripts, raw data, and analysis code are available in our [replication package](https://github.com/prajusth/SSE_P1). We've deliberately only included relavant graphs and results for readability's sake. The complete set of results and graphs can be found in the `results` directory in our [replication package](https://github.com/prajusth/SSE_P1).
+
 ## The setup
 
 We needed test data that would represent the kinds of files compression tools encounter in practice. Rather than downloading arbitrary files (which would introduce uncontrollable variation), we generated synthetic test files deterministically from a fixed random seed:
@@ -72,29 +74,23 @@ The scatter plot below shows all 72 configurations at once:
 
 ## Does zstd actually compress well enough?
 
-A tool that uses no energy and doesn't compress anything is useless. If zstd is just doing less work and getting worse results, the savings don't mean much. We need to check whether zstd's speed comes at the expense of actually compressing well. The compression ratio plots break this out per file type and size (we avoided averaging across sizes because, as it turns out, the behavior is quite different at each scale).
+A tool that uses no energy and doesn't compress anything is useless. If zstd is just doing less work and getting worse results, the savings don't mean much. We need to check whether zstd's speed comes at the expense of actually compressing well. The compression ratio plots break this out per file type and size, we've included the ratios for the large files, the raios are comparable for other sizes.
 
-![Compression ratio fast](../results/compression_ratio_fast.png)
-*Figure 4a: Compression ratio at fast level (lower = better). Text and CSV: all three tools cluster together. Images: they diverge dramatically.*
+![Compression ratio default for large files](../results/compression_ratio_default_large.png)
+*Figure 4a: Compression ratio at default level for the large files (lower = better). Text and CSV: all three tools cluster together. Images: they diverge dramatically.*
 
-![Compression ratio default](../results/compression_ratio_default.png)
-*Figure 4b: Default level. 7-Zip pulls ahead on images (0.44 vs 0.87 for zstd), but all three converge on CSV and text.*
+**Text and CSV** are where zstd's energy advantage really pays off. All three tools compress these well (ratios of 0.14-0.22 at default), separated by only 7 percentage points. The gap is small because text-like data plays to every algorithm's strengths. zstd finds most of the savings quickly; 7-Zip's deeper search hits diminishing returns.
 
-**Text and CSV** are where zstd's energy advantage really pays off. All three tools compress these well (ratios of 0.14-0.25 at default), separated by only 6-7 percentage points. zstd lands at 0.19-0.21, gzip at 0.22-0.25, 7-Zip at 0.14-0.15. The gap is small because text-like data plays to every algorithm's strengths. zstd finds most of the savings quickly; 7-Zip's deeper search hits diminishing returns.
+**Images (BMP)** tell a completely different story. 7-Zip achieves 0.44 (cutting 56%), gzip manages 0.72 (28%), and zstd barely compresses at all: 0.87 (13%). This reflects a fundamental design difference. zstd and gzip use stream-oriented compression (LZ77 + entropy coding) optimized for sequential, text-like patterns. Raw binary pixel data doesn't match well against their sliding windows. 7-Zip's LZMA2 uses larger dictionary sizes and more sophisticated match-finding that detects structure in binary data the others miss. This is a known characteristic: developers on zstd's GitHub have discussed that binary numeric data falls outside the algorithm's design target (see [issue #3014](https://github.com/facebook/zstd/issues/3014)).
 
-**Images (BMP)** tell a completely different story. At default/large, 7-Zip achieves 0.44 (cutting 56%), gzip manages 0.72 (28%), and zstd barely compresses at all: 0.87 (13%). This reflects a fundamental design difference. zstd and gzip use stream-oriented compression (LZ77 + entropy coding) optimized for sequential, text-like patterns. Raw binary pixel data doesn't match well against their sliding windows. 7-Zip's LZMA2 uses larger dictionary sizes and more sophisticated match-finding that detects structure in binary data the others miss. This is a known characteristic: developers on zstd's GitHub have discussed that binary numeric data falls outside the algorithm's design target (issue #3014).
-
-**PDFs** are the odd one out: nothing works well (0.71-0.82 across the board). Our PDFs are internally compressed with FlateDecode at generation time, leaving almost no redundancy for external tools. Every joule spent compressing a PDF is largely wasted.
+**PDFs** are the odd one out: nothing works well (0.71-0.81 across the board). Our PDFs are internally compressed with FlateDecode at generation time, leaving almost no redundancy for external tools. Every joule spent compressing a PDF is largely wasted.
 
 ## Energy per unit of useful compression
 
 The findings above create a tension we need to resolve. zstd uses far less energy, but for some file types it doesn't compress well. 7-Zip uses far more energy, but sometimes that energy buys real results. Just comparing raw joules or raw compression ratios doesn't capture the trade-off. What we really want to know is: how much energy does each tool spend per unit of *useful* work? To answer that, we computed joules per percentage point of size reduced. A tool spending 50 J to save 50% costs 1 J/%; one spending 50 J to save 5% costs 10 J/%.
 
-![Efficiency fast](../results/efficiency_fast.png)
+![Efficiency fast](../results/efficiency_default_large.png)
 *Figure 5a: Energy per percent size reduction at fast level. Note the different y-axis scales across file types.*
-
-![Efficiency default](../results/efficiency_default.png)
-*Figure 5b: Default level. For text and CSV, zstd's advantage is overwhelming.*
 
 For text and CSV at default/large, zstd spends 0.29-0.32 J/%, gzip 1.77-1.91 J/%, and 7-Zip 5.92-7.14 J/%. That makes zstd 6-25x more efficient on structured data.
 
@@ -113,26 +109,17 @@ Everything so far has compared tools against each other. But there's another kno
 
 Energy alone misses something important. In production, a tool that uses moderate energy but ties up a CPU core for minutes is blocking other work. We need a metric that captures both dimensions. The Energy Delay Product (EDP = Energy × Time) does exactly that: it penalizes tools that are both slow and hungry, rewarding those that finish quickly and cheaply.
 
-![EDP fast](../results/edp_fast.png)
-*Figure 7a: EDP at fast level.*
+![EDP fast](../results/edp_fast_large.png)
+*Figure 7: EDP at fast level.*
 
-![EDP default](../results/edp_default.png)
-*Figure 7b: EDP at default level.*
-
-EDP reveals a surprise: gzip has a *worse* EDP than 7-Zip on images and PDFs at fast level. For large PDFs (fast), gzip's EDP is 2,947 J·s vs. 7-Zip's 2,338 J·s. gzip is slower on binary data and draws more energy doing it. We'd have missed this looking at energy alone. zstd's EDP is in a different league: 37-64 J·s for the same workloads.
+EDP reveals a surprise: gzip has a *worse* EDP than 7-Zip at fast level. For large PDFs (fast), gzip's EDP is 2,947 J·s vs. 7-Zip's 2,338 J·s. gzip is slower on binary data and draws more energy doing it. We'd have missed this looking at energy alone. zstd's EDP is in a different league: 37-64 J·s for the same workloads.
 
 ## Bigger files are cheaper per byte
 
 There's one more pattern worth highlighting because it has direct practical implications: energy per megabyte drops consistently as files grow. For 7-Zip on CSV (default), it costs 2.63 J/MB at 10 MB but only 1.00 J/MB at 500 MB. This makes intuitive sense. Compression algorithms pay a fixed cost to initialize (loading dictionaries, allocating buffers), and they build better internal models as they see more data.
 
-![Energy per MB fast](../results/energy_per_mb_fast.png)
-*Figure 8a: Energy per MB at fast level.*
-
-![Energy per MB default](../results/energy_per_mb_default.png)
-*Figure 8b: Default level.*
-
 ![Scaling](../results/scaling.png)
-*Figure 9: Energy per MB vs. file size. All tools get more efficient with larger inputs.*
+*Figure 8: Energy per MB vs. file size. All tools get more efficient with larger inputs.*
 
 Practical implication: batch small files into larger archives before compressing and you'll get more compression per joule.
 
@@ -172,5 +159,3 @@ Our experiment ran on a single machine (AMD Ryzen 7 4800H), so absolute numbers 
 "Which compression tool should I use?" is the wrong question. The right one is "what am I compressing?" For text-like workloads that dominate most software pipelines, zstd at fast level gives good compression at 85-96% less energy than 7-Zip and 69-84% less than gzip, with nearly the same output size. For raw binary data, 7-Zip's LZMA2 does work that simpler algorithms genuinely can't, and its energy premium buys meaningful compression. For anything already compressed, the most energy-efficient option is the simplest: don't compress it again.
 
 Sometimes the greenest optimization isn't a smarter algorithm. It's just picking the right tool for the job, or deciding not to run the job at all.
-
-All scripts, raw data, and analysis code are available in our [replication package](https://github.com/prajusth/SSE_P1).
