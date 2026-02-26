@@ -1,15 +1,3 @@
----
-author: Dragos Erhan, Tae yong Kwon, Priyansh Rajusth, Vincent Ruijgrok
-group_number: 15
-title: "Zip Wars: Which Compression Tool is Burning Through Your Energy?"
-image: "../results/zip.jpg"
-date: 12/02/2026
-summary: |-
-  Zipping your files has become as ubiquitous as Googling for information or, by now, asking Chat (known as ChatGPT'ing). Zip archives are the standard in consumer and business data distribution. But there are multiple providers that can compress your folders. We will investigate if there's a difference, and if there is one choice that could significantly influence our global ICT energy usage.
-identifier: p1_measuring_software_2026 # Do not change this
-all_projects_page: "../p1_measuring_software" # Do not change this
----
-
 Every time a server rotates its logs, a CI pipeline bundles an artifact, or a cloud service packages data for transfer, some compression tool quietly burns through CPU cycles. On a single machine, nobody notices. But at the scale of thousands of servers running these jobs hourly, the choice of compression tool starts showing up on the electricity bill. We wanted to know: does that choice actually matter, and if so, when?
 
 We pitted three widely-used tools against each other: 7-Zip (LZMA2), gzip (DEFLATE), and Zstandard (zstd), and measured the energy each consumed across a range of realistic workloads. The answer turned out to be more interesting than "tool X wins." It depends almost entirely on *what* you're compressing, and the reasons why reveal something fundamental about how these algorithms work.
