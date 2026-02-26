@@ -1,14 +1,5 @@
 """
-analyze.py — Statistical analysis and plots.
-
-Follows the course methodology:
-  1. Remove warm-up runs, fix RAPL overflow, remove outliers
-  2. Normality test: Shapiro-Wilk per config group
-  3. Per-config statistical tests (provider + level comparisons)
-  4. Plots: violins, energy-per-MB, ratio-vs-energy, EDP, heatmaps, efficiency
-  5. Descriptive statistics
-
-Every test/plot operates at (level, file_type, file_size) granularity.
+analyze_large.py - modified analyze.py and focused on `large` files only
 """
 
 import argparse
